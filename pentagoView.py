@@ -230,12 +230,15 @@ class PentagoView():
         """
 
         # update view based on board configuration
+        for hole_index in range(36):
+            self.clearHole(hole_index)
+
         for hole in range(len(self._holes)):
-            if board[hole] == "":
+            if board[hole] == " ":
                 self.clearHole(hole)
-            elif board[hole] == "w":
+            elif board[hole] == "W":
                 self.putWhiteBall(hole) 
-            elif board[hole] == "b":
+            elif board[hole] == "B":
                 self.putBlackBall(hole)
             else:
                 raise ValueError, "Unexpected value '" + board[hole] + "' in input parameter."                

@@ -1,5 +1,7 @@
 from copy import deepcopy
+import time
 from pentago import *
+
 class Game:
     """A game is similar to a problem, but it has a utility for each
     state and a terminal test instead of a path cost and a goal
@@ -8,6 +10,9 @@ class Game:
     override display and successors or you can inherit their default
     methods. You will also need to set the self.initial instance variable
     to the initial state; this can be done in the constructor."""
+
+    def __init__(self):
+        self.time_stamp_begin = 0
 
     def legal_moves(self, state):
         "Return a list of the allowable moves at this point."
@@ -29,7 +34,8 @@ class Game:
         "Return the state that results from making a move from a state."
         state = self.__place_ball(player, move, state)
         state = self.__make_turn(move, state)
-		
+        
+        state.to_move = opponent(state.to_move)	
         return state
             
     def __place_ball(self, player, move, state):
@@ -94,9 +100,22 @@ class Game:
         
     def utility(self, state, player):
         "Return the value of this final state to player."
-        board = state.board
+        ## First let's check the horizontal rows for the player, and get a score
+        horiz_score = self.__horiz_points(state, player)
 
+        ## Now let's check the vertical columns for the player, and get a score
+        vert_score = self.__vert_points(state, player)
+
+        ## Now we need to check the columns and rows for the opposite player.
+        opp_horiz_score = self.__horiz_points(state, opponent(player))
+        opp_vert_score  = self.__vert_points(state, opponent(player))
+
+        ## Our total Utility is the players score, minus the opponents score.
+        return (horiz_score - opp_horiz_score) + (vert_score - opp_vert_score)
+
+    def __horiz_points(self, state, player):
         ## First let's check horizontal combinations.
+        board = state.board
         total_horiz_points = 0
         for row in range(6):
             max_combination = 0
@@ -117,9 +136,11 @@ class Game:
                 total_horiz_points += 4
             elif max_combination == 5:
                 total_horiz_points += 1000000
+        return total_horiz_points
 
-
+    def __vert_points(self, state, player):
         ## First let's check vertical combinations.
+        board = state.board
         total_vert_points = 0
         for col in range(6):
             max_combination = 0
@@ -140,16 +161,17 @@ class Game:
                 total_vert_points += 4
             elif max_combination == 5:
                 total_vert_points += 1000000
-
-        #print "horizontal_points=",total_horiz_points,"vertical_points=",total_vert_points
-        return total_horiz_points+total_vert_points
-
+        return total_vert_points
 
     def terminal_test(self, state):
         "Return True if this is a final state for the game."
         #good place to implement the time cut off for pentago
         #to kill function if time runs out before legal moves run out
-        return not self.legal_moves(state)
+
+        if not self.legal_moves(state) or self.utility(state, self.to_move(state)) >= 10000 or time.time() - self.time_stamp_begin > 4:
+            return True
+        else:
+            return False
 
     def to_move(self, state):
         "Return the player whose move it is in this state."
@@ -157,15 +179,16 @@ class Game:
 
     def display(self, state):
         "Print or otherwise display the state."
+        print ""
         for row in range(6):
             print state.board[0+(6*row)],state.board[1+(6*row)],state.board[2+(6*row)],"|",
             print state.board[3+(6*row)],state.board[4+(6*row)],state.board[5+(6*row)]
         #print state.board
 
 
-    def successors(self, player, state):
+    def successors(self, state):
         "Return a list of legal (move, state) pairs."
-        return [(move, self.make_move(player, move, deepcopy(state)))
+        return [(move, self.make_move(self.to_move(state), move, deepcopy(state)))
                 for move in self.legal_moves(state)]
 
     def __repr__(self):
@@ -182,13 +205,22 @@ class move:
     
     def __str__(self):
         return "ball_pos="+str(self.ball_location)+",turn_direction="+self.turn_direction+",turn_quadrant="+str(self.turn_quadrant)
-        
+
+def opponent(player):
+    if player == "W":
+        return "B"
+    else:
+        return "W"
 
 if __name__ == "__main__":
     new_game = Game()
     our_state = state()
     our_state.board[2] = "W" 
-    our_state.board[12] = "B"
+    our_state.board[5] = "B"
+    our_state.board[11] = "B"
+    our_state.board[17] = "B"
+    our_state.board[23] = "B"
+    our_state.board[16] = "B"
     
     new_game.display(our_state)
     new_game.utility(our_state, "W")
@@ -212,7 +244,7 @@ if __name__ == "__main__":
     new_game.display(our_state)
     new_game.utility(our_state, "W")
     
-    our_move = move("clockwise",3, 6)
+    our_move = move("None",3, 6)
     our_state = new_game.make_move("W",our_move,our_state)
     new_game.display(our_state)
     new_game.utility(our_state, "W")
